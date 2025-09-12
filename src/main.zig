@@ -5,6 +5,8 @@
 const std = @import("std");
 const printerr = std.debug.print;
 
+const Scanner = @import("Scanner.zig").Scanner;
+
 pub fn main() !void {
     // stdout is for the actual output of your application, for example if you
     // are implementing gzip, then only the compressed bytes should be sent to
