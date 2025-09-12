@@ -36,8 +36,15 @@ pub fn main() !void {
 }
 
 fn run(allocator: std.mem.Allocator, source: []u8) !void {
-    _ = allocator;
-    _ = source;
+    var scanner = try Scanner.init(allocator, source);
+    defer scanner.deinit();
+    try scanner.scanTokens();
+
+    printerr("Found tokens: ", .{});
+    for (scanner.tokens.items) |token| {
+        printerr("{s}, ", .{@tagName(token.token_type)});
+        //_ = token;
+    }
 }
 
 fn runPrompt(allocator: std.mem.Allocator) !void {
@@ -51,8 +58,11 @@ fn runPrompt(allocator: std.mem.Allocator) !void {
         try bw.flush();
         const buffer: [1024]u8 = undefined;
         const result = try stdin.readUntilDelimiterOrEof(buffer, "\n");
-        printerr("got: {s}, which is {} chars.\n", .{ result, result.len });
-        run(allocator, buffer) catch |err| return err; // TODO: don't want to kill REPL tho
+        //printerr("got: {s}, which is {d} chars.\n", .{ result, result.len });
+        run(allocator, result) catch |err| {
+            _ = err;
+            continue;
+        }; // don't want to kill REPL
     }
 }
 

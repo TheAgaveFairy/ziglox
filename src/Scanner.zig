@@ -1,5 +1,6 @@
 const std = @import("std");
 const printerr = std.debug.print;
+const ascii = std.ascii;
 
 pub const Scanner = struct {
     source: []u8,
@@ -18,25 +19,24 @@ pub const Scanner = struct {
         };
     }
 
-    pub fn deinit(self: *@This()) !void {
+    pub fn deinit(self: *@This()) void {
         self.tokens.deinit();
     }
 
-    pub fn scanTokens(self: *@This()) !?std.ArrayList(Token) {
+    pub fn scanTokens(self: *@This()) !void {
         while (!self.isAtEnd()) {
-            //self.start = self.current;
+            self.start = self.current;
             self.scanToken() catch |err| {
-                _ = err;
+                printerr("Error scanning tokens: {}\n", .{err});
                 continue;
             };
         }
-        try self.tokens.append(Token(.EOF, "", self.line));
-        return null;
+        try self.tokens.append(Token.init(.EOF, "", self.line));
     }
 
-    fn scanToken(self: @This()) !void {
-        const c = self.advance();
-        const token: TokenType = switch (c) {
+    fn scanToken(self: *@This()) !void {
+        const c = self.advance(); // consumes
+        const token: ?TokenType = switch (c) {
             '(' => .LEFT_PAREN,
             ')' => .RIGHT_PAREN,
             '{' => .LEFT_BRACE,
@@ -47,19 +47,40 @@ pub const Scanner = struct {
             '+' => .PLUS,
             ';' => .SEMICOLON,
             '*' => .STAR,
-            // TODO: '/' will be a special case to deal with uniquely
+            // TODO: '/' will be a special case to deal with uniquely b/c comments
 
             '!' => if (self.match('=')) .BANG_EQUAL else .BANG,
             '=' => if (self.match('=')) .EQUAL_EQUAL else .EQUAL,
             '<' => if (self.match('=')) .LESS_EQUAL else .LESS,
             '>' => if (self.match('=')) .GREATER_EQUAL else .GREATER,
 
+            // comments
+            '/' => blk: {
+                if (self.match('/')) { // we've found a comment to ignore
+                    while (self.peek(0) != '\n' and !self.isAtEnd()) {
+                        _ = self.advance(); // just ignore it all
+                    }
+                    break :blk null;
+                } else {
+                    break :blk .SLASH;
+                }
+            },
+
+            // whitespace
+            ' ', '\t', '\r' => null,
+            '\n' => blk: {
+                self.line += 1;
+                break :blk null;
+            },
+
+            // default
             else => {
-                printerr("{s}: Unexpected character", .{self.line});
+                printerr("{d}: Unexpected character", .{self.line});
+                //break :blk null;
                 return error.UnexpectedCharacter;
             },
         };
-        try self.addToken(token);
+        if (token) |t| try self.addToken(t);
     }
 
     fn isAtEnd(self: *@This()) bool {
@@ -72,6 +93,12 @@ pub const Scanner = struct {
         return char;
     }
 
+    fn peek(self: *@This(), offset: usize) u8 {
+        if (self.isAtEnd()) return 0;
+        return self.source.ptr[self.current + offset];
+    }
+
+    /// a variation on peek
     fn match(self: *@This(), expected: u8) bool {
         if (self.isAtEnd()) return false;
         if (self.source.ptr[self.current] != expected) return false;
@@ -81,7 +108,8 @@ pub const Scanner = struct {
 
     fn addToken(self: *@This(), token_type: TokenType) !void {
         const lexeme = self.source.ptr[self.start..self.current];
-        try self.tokens.append(.{ token_type, lexeme, self.line });
+        const token = Token.init(token_type, lexeme, self.line);
+        try self.tokens.append(token);
     }
 };
 
@@ -146,6 +174,6 @@ pub const Token = struct {
     }
 
     pub fn toString(self: *Token) []u8 {
-        printerr("{s} {s} line: {d}", .{ self.token_type, self.lexeme, self.line });
+        printerr("{s} {s} line: {d}", .{ @tagName(self.token_type), self.lexeme, self.line });
     }
 };
