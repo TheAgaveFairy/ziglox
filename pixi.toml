@@ -1,0 +1,14 @@
+[workspace]
+authors = ["Paul Dutton <jodgey4@gmail.com>"]
+channels = ["conda-forge"]
+name = "ziglox"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+zig = ">=0.14.0,<0.15"
+
+[tool.pixi.scripts]
+alias = "echo 'alias zbr=\"zig build run -- \"' >> $BASH_ENV"
