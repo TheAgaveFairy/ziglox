@@ -1,3 +1,8 @@
 {}()!!=
 // should get ignored
-<=<
+3.14
+<=< | "string literal"
+identifier 3lasttokenwillfaillater fail3
+_valid_identifier
+for fun identifier true
+"unterminated string

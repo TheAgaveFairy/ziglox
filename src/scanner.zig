@@ -9,6 +9,8 @@ pub const Scanner = struct {
     current: usize,
     line: usize,
 
+    const keywords = std.StaticStringMap(TokenType).initComptime(.{ .{ "and", .AND }, .{ "class", .CLASS }, .{ "else", .ELSE }, .{ "false", .FALSE }, .{ "for", .FOR }, .{ "fun", .FUN }, .{ "if", .IF }, .{ "nil", .NIL }, .{ "or", .OR }, .{ "print", .PRINT }, .{ "return", .RETURN }, .{ "super", .SUPER }, .{ "this", .THIS }, .{ "true", .TRUE }, .{ "var", .VAR }, .{ "while", .WHILE } });
+
     pub fn init(allocator: std.mem.Allocator, source: []u8) !@This() {
         return .{
             .source = source,
@@ -27,7 +29,7 @@ pub const Scanner = struct {
         while (!self.isAtEnd()) {
             self.start = self.current;
             self.scanToken() catch |err| {
-                printerr("Error scanning tokens: {}\n", .{err});
+                printerr("\tscanTokens error: {}\n", .{err});
                 continue;
             };
         }
@@ -73,14 +75,66 @@ pub const Scanner = struct {
                 break :blk null;
             },
 
+            // string literals "catchme"
+            '"' => blk: {
+                try self.getString(self.line);
+                break :blk null;
+            },
+
+            // numbers (to become f64, stored as Strings for now)
+            '0'...'9' => blk: {
+                try self.getNumber();
+                break :blk null; // handled in getNumber(self: *Scanner, start_line: usize)
+            },
+
+            // identifiers start with alpha chars and/or '_'
+            'A'...'Z', 'a'...'z', '_' => blk: {
+                try self.getIdentifier();
+                break :blk null;
+            },
+
             // default
             else => {
-                printerr("{d}: Unexpected character", .{self.line});
+                printerr("{d}: Unexpected character: {c}\n", .{ self.line, c });
                 //break :blk null;
                 return error.UnexpectedCharacter;
             },
         };
         if (token) |t| try self.addToken(t);
+    }
+
+    fn getIdentifier(self: *@This()) !void {
+        while (ascii.isAlphanumeric(self.peek(0)) or self.peek(0) == '_') _ = self.advance();
+        const lexeme = self.source.ptr[self.start..self.current];
+        const keyword_type = @This().keywords.get(lexeme);
+        if (keyword_type) |kwt| try self.addToken(kwt) else try self.addToken(.IDENTIFIER);
+    }
+
+    fn getNumber(self: *@This()) !void {
+        while (ascii.isDigit(self.peek(0))) _ = self.advance();
+        if (self.peek(0) == '.' and ascii.isDigit(self.peek(1))) {
+            _ = self.advance(); // consume the decimal place '.'
+            while (ascii.isDigit(self.peek(0))) _ = self.advance();
+        }
+        const literal = self.source.ptr[self.start..self.current];
+        const token = Token.init(.NUMBER, literal, self.line);
+        try self.tokens.append(token);
+    }
+
+    fn getString(self: *@This(), start_line: usize) !void {
+        while (self.peek(0) != '"' and !self.isAtEnd()) {
+            if (self.peek(0) == '\n') self.line += 1;
+            _ = self.advance();
+        }
+        if (self.isAtEnd()) {
+            printerr("Line {d}: unterminated string\n", .{start_line});
+            return error.UnterminatedString;
+        }
+        _ = self.advance(); // get final closing '"'
+
+        const literal = self.source.ptr[self.start + 1 .. self.current - 1];
+        const token = Token.init(.STRING, literal, self.line);
+        try self.tokens.append(token);
     }
 
     fn isAtEnd(self: *@This()) bool {
@@ -94,7 +148,7 @@ pub const Scanner = struct {
     }
 
     fn peek(self: *@This(), offset: usize) u8 {
-        if (self.isAtEnd()) return 0;
+        if (self.isAtEnd() or self.current + offset >= self.source.len) return 0;
         return self.source.ptr[self.current + offset];
     }
 
