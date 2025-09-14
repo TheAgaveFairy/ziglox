@@ -9,9 +9,13 @@ pub fn run(allocator: std.mem.Allocator, source: []u8) !void {
     try scanner.scanTokens();
 
     printerr("Found tokens: ", .{});
-    for (scanner.tokens.items) |token| {
+    for (scanner.tokens.items) |*token| {
         _ = switch (token.token_type) {
             .STRING, .NUMBER, .IDENTIFIER => printerr("{s}: \"{s}\", ", .{ @tagName(token.token_type), token.lexeme }),
+            //.STRING, .NUMBER, .IDENTIFIER => {
+            //    token.toString();
+            //    printerr(", ", .{});
+            //},
             //try std.fmt.parseFloat(f64, token.lexeme);
             else => printerr("{s}, ", .{@tagName(token.token_type)}),
         };
@@ -25,15 +29,11 @@ pub fn runPrompt(allocator: std.mem.Allocator) !void {
     const stdout = bw.writer();
 
     while (true) {
-        try stdout.print(">>>", .{});
+        try stdout.print("\n>>>", .{});
         try bw.flush();
-        const buffer: [1024]u8 = undefined;
-        const result = try stdin.readUntilDelimiterOrEof(buffer, "\n");
+        const result = try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) orelse break;
         //printerr("got: {s}, which is {d} chars.\n", .{ result, result.len });
-        run(allocator, result) catch |err| {
-            _ = err;
-            continue;
-        }; // don't want to kill REPL
+        run(allocator, result) catch {}; // don't want to kill REPL
     }
 }
 

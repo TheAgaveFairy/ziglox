@@ -29,8 +29,7 @@ pub const Scanner = struct {
         while (!self.isAtEnd()) {
             self.start = self.current;
             self.scanToken() catch |err| {
-                printerr("\tscanTokens error: {}\n", .{err});
-                continue;
+                printerr("\tscanTokens() error: {}\n", .{err});
             };
         }
         try self.tokens.append(Token.init(.EOF, "", self.line));
@@ -49,7 +48,6 @@ pub const Scanner = struct {
             '+' => .PLUS,
             ';' => .SEMICOLON,
             '*' => .STAR,
-            // TODO: '/' will be a special case to deal with uniquely b/c comments
 
             '!' => if (self.match('=')) .BANG_EQUAL else .BANG,
             '=' => if (self.match('=')) .EQUAL_EQUAL else .EQUAL,
@@ -95,7 +93,7 @@ pub const Scanner = struct {
 
             // default
             else => {
-                printerr("{d}: Unexpected character: {c}\n", .{ self.line, c });
+                printerr("Line {d}: Unexpected character: {c}\n", .{ self.line, c });
                 //break :blk null;
                 return error.UnexpectedCharacter;
             },
@@ -227,7 +225,7 @@ pub const Token = struct {
         return .{ .token_type = token_type, .lexeme = lexeme, .line = line };
     }
 
-    pub fn toString(self: *Token) []u8 {
+    pub fn toString(self: *Token) void {
         printerr("{s} {s} line: {d}", .{ @tagName(self.token_type), self.lexeme, self.line });
     }
 };

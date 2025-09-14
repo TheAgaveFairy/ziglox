@@ -36,6 +36,7 @@ pub fn main() !void {
     lox.runFile(allocator, filename) catch |err| {
         return err;
     };
+    try lox.runPrompt(allocator);
 }
 
 fn testRun(allocator: std.mem.Allocator, source: []const u8, expected: []const TokenType) !void {
