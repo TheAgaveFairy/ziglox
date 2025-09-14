@@ -5,7 +5,9 @@
 const std = @import("std");
 const printerr = std.debug.print;
 
-const Scanner = @import("scanner.zig").Scanner;
+const scanner = @import("scanner.zig");
+const Scanner = scanner.Scanner;
+const TokenType = scanner.TokenType;
 const lox = @import("lox.zig");
 
 pub fn main() !void {
@@ -36,20 +38,21 @@ pub fn main() !void {
     };
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+fn testRun(allocator: std.mem.Allocator, source: []const u8, expected: []const TokenType) !void {
+    const buffer = try allocator.dupe(u8, source);
+    defer allocator.free(buffer);
+
+    var scan = try Scanner.init(allocator, buffer);
+    defer scan.deinit();
+    try scan.scanTokens();
+
+    for (scan.tokens.items, 0..) |token, i| {
+        try std.testing.expectEqual(expected[i], token.token_type);
+    }
 }
 
-test "fuzz example" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
+test "some tokens" {
+    const source = "(){};";
+    const expected = [_]TokenType{ .LEFT_PAREN, .RIGHT_PAREN, .LEFT_BRACE, .RIGHT_BRACE, .SEMICOLON, .EOF };
+    try testRun(std.testing.allocator, source, &expected);
 }

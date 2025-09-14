@@ -3,7 +3,7 @@ const printerr = std.debug.print;
 
 const Scanner = @import("scanner.zig").Scanner;
 
-fn run(allocator: std.mem.Allocator, source: []u8) !void {
+pub fn run(allocator: std.mem.Allocator, source: []u8) !void {
     var scanner = try Scanner.init(allocator, source);
     defer scanner.deinit();
     try scanner.scanTokens();

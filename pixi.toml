@@ -6,6 +6,8 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
+tests = "zig build test --summary all"
+doit = "clear && zig build run -- test.lox"
 
 [dependencies]
 zig = ">=0.14.0,<0.15"
