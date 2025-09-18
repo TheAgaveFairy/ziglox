@@ -3,6 +3,7 @@ const printerr = std.debug.print;
 const ascii = std.ascii;
 
 pub const Scanner = struct {
+    allocator: std.mem.Allocator,
     source: []u8,
     tokens: std.ArrayList(Token),
     start: usize,
@@ -11,10 +12,11 @@ pub const Scanner = struct {
 
     const keywords = std.StaticStringMap(TokenType).initComptime(.{ .{ "and", .AND }, .{ "class", .CLASS }, .{ "else", .ELSE }, .{ "false", .FALSE }, .{ "for", .FOR }, .{ "fun", .FUN }, .{ "if", .IF }, .{ "nil", .NIL }, .{ "or", .OR }, .{ "print", .PRINT }, .{ "return", .RETURN }, .{ "super", .SUPER }, .{ "this", .THIS }, .{ "true", .TRUE }, .{ "var", .VAR }, .{ "while", .WHILE } });
 
-    pub fn init(allocator: std.mem.Allocator, source: []u8) !@This() {
+    pub fn init(allocator: std.mem.Allocator, source: []u8) @This() {
         return .{
+            .allocator = allocator,
             .source = source,
-            .tokens = std.ArrayList(Token).init(allocator),
+            .tokens = .empty,
             .start = 0,
             .current = 0,
             .line = 1,
@@ -22,7 +24,7 @@ pub const Scanner = struct {
     }
 
     pub fn deinit(self: *@This()) void {
-        self.tokens.deinit();
+        self.tokens.deinit(self.allocator);
     }
 
     pub fn scanTokens(self: *@This()) !void {
@@ -32,7 +34,7 @@ pub const Scanner = struct {
                 printerr("\tscanTokens() error: {}\n", .{err});
             };
         }
-        try self.tokens.append(Token.init(.EOF, "", self.line));
+        try self.tokens.append(self.allocator, Token.init(.EOF, "", self.line));
     }
 
     fn scanToken(self: *@This()) !void {
@@ -116,7 +118,7 @@ pub const Scanner = struct {
         }
         const literal = self.source.ptr[self.start..self.current];
         const token = Token.init(.NUMBER, literal, self.line);
-        try self.tokens.append(token);
+        try self.tokens.append(self.allocator, token);
     }
 
     fn getString(self: *@This(), start_line: usize) !void {
@@ -132,7 +134,7 @@ pub const Scanner = struct {
 
         const literal = self.source.ptr[self.start + 1 .. self.current - 1];
         const token = Token.init(.STRING, literal, self.line);
-        try self.tokens.append(token);
+        try self.tokens.append(self.allocator, token);
     }
 
     fn isAtEnd(self: *@This()) bool {
@@ -161,7 +163,7 @@ pub const Scanner = struct {
     fn addToken(self: *@This(), token_type: TokenType) !void {
         const lexeme = self.source.ptr[self.start..self.current];
         const token = Token.init(token_type, lexeme, self.line);
-        try self.tokens.append(token);
+        try self.tokens.append(self.allocator, token);
     }
 };
 

@@ -4,7 +4,7 @@ const printerr = std.debug.print;
 const Scanner = @import("scanner.zig").Scanner;
 
 pub fn run(allocator: std.mem.Allocator, source: []u8) !void {
-    var scanner = try Scanner.init(allocator, source);
+    var scanner = Scanner.init(allocator, source);
     defer scanner.deinit();
     try scanner.scanTokens();
 
@@ -23,16 +23,21 @@ pub fn run(allocator: std.mem.Allocator, source: []u8) !void {
 }
 
 pub fn runPrompt(allocator: std.mem.Allocator) !void {
-    const stdin = std.io.getStdIn().reader();
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
+    //const stdin = std.io.getStdIn().reader();
+    var stdin_buffer: [1024]u8 = undefined;
+    var stdin_reader = std.fs.File.stdin().reader(&stdin_buffer);
+    var stdin = &stdin_reader.interface;
 
     while (true) {
         try stdout.print("\n>>>", .{});
-        try bw.flush();
-        const result = try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) orelse break;
-        //printerr("got: {s}, which is {d} chars.\n", .{ result, result.len });
+        try stdout.flush();
+        //const result = try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) orelse break;
+        const result = try stdin.takeDelimiterExclusive('\n');
+        printerr("got: {s}, which is {d} chars.\n", .{ result, result.len });
         run(allocator, result) catch {}; // don't want to kill REPL
     }
 }

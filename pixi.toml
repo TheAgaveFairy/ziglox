@@ -10,7 +10,7 @@ tests = "zig build test --summary all"
 doit = "clear && zig build run -- test.lox"
 
 [dependencies]
-zig = ">=0.14.0,<0.15"
+zig = ">=0.15.1,<0.16"
 
 [tool.pixi.scripts]
 alias = "echo 'alias zbr=\"zig build run -- \"' >> $BASH_ENV"
