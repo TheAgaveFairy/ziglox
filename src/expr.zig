@@ -4,28 +4,28 @@ const Token = scanner.Token;
 
 pub const AssignExpr = struct {
     name: Token,
-    value: *Expr,
+    value: *const Expr,
 };
 
 pub const BinaryExpr = struct {
-    left: *Expr,
+    left: *const Expr,
     op: Token,
     right: *Expr,
 };
 
 pub const CallExpr = struct {
-    callee: *Expr,
+    callee: *const Expr,
     paren: Token,
-    arguments: std.ArrayList(*Expr),
+    arguments: ?std.ArrayList(*const Expr),
 };
 
 pub const GetExpr = struct {
-    object: *Expr,
+    object: *const Expr,
     name: Token,
 };
 
 pub const GroupingExpr = struct {
-    expr: *Expr,
+    expr: *const Expr,
 };
 
 pub const LiteralExpr = struct {

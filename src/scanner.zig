@@ -34,7 +34,13 @@ pub const Scanner = struct {
                 printerr("\tscanTokens() error: {}\n", .{err});
             };
         }
-        try self.tokens.append(self.allocator, Token.init(.EOF, "", self.line));
+        const token = Token{
+            .token_type = .EOF,
+            .lexeme = "",
+            .literal = null,
+            .line = self.line,
+        };
+        try self.tokens.append(self.allocator, token);
     }
 
     fn scanToken(self: *@This()) !void {
@@ -100,14 +106,14 @@ pub const Scanner = struct {
                 return error.UnexpectedCharacter;
             },
         };
-        if (token) |t| try self.addToken(t);
+        if (token) |t| try self.addToken(t, null);
     }
 
     fn getIdentifier(self: *@This()) !void {
         while (ascii.isAlphanumeric(self.peek(0)) or self.peek(0) == '_') _ = self.advance();
         const lexeme = self.source.ptr[self.start..self.current];
         const keyword_type = @This().keywords.get(lexeme);
-        if (keyword_type) |kwt| try self.addToken(kwt) else try self.addToken(.IDENTIFIER);
+        if (keyword_type) |kwt| try self.addToken(kwt, null) else try self.addToken(.IDENTIFIER, null);
     }
 
     fn getNumber(self: *@This()) !void {
@@ -117,7 +123,13 @@ pub const Scanner = struct {
             while (ascii.isDigit(self.peek(0))) _ = self.advance();
         }
         const literal = self.source.ptr[self.start..self.current];
-        const token = Token.init(.NUMBER, literal, self.line);
+        //const token = Token.init(.NUMBER, literal, self.line);
+        const token = Token{
+            .token_type = .NUMBER,
+            .lexeme = literal,
+            .literal = Literal{ .number = try std.fmt.parseFloat(f64, literal) },
+            .line = self.line,
+        };
         try self.tokens.append(self.allocator, token);
     }
 
@@ -133,7 +145,13 @@ pub const Scanner = struct {
         _ = self.advance(); // get final closing '"'
 
         const literal = self.source.ptr[self.start + 1 .. self.current - 1];
-        const token = Token.init(.STRING, literal, self.line);
+        //const token = Token.init(.STRING, literal, self.line);
+        const token = Token{
+            .token_type = .STRING,
+            .lexeme = literal,
+            .literal = Literal{ .string = literal },
+            .line = self.line,
+        };
         try self.tokens.append(self.allocator, token);
     }
 
@@ -160,9 +178,14 @@ pub const Scanner = struct {
         return true;
     }
 
-    fn addToken(self: *@This(), token_type: TokenType) !void {
+    fn addToken(self: *@This(), token_type: TokenType, literal: ?Literal) !void {
         const lexeme = self.source.ptr[self.start..self.current];
-        const token = Token.init(token_type, lexeme, self.line);
+        const token = Token{
+            .token_type = token_type,
+            .lexeme = lexeme,
+            .literal = literal,
+            .line = self.line,
+        };
         try self.tokens.append(self.allocator, token);
     }
 };
@@ -220,14 +243,16 @@ pub const TokenType = enum {
 pub const Token = struct {
     token_type: TokenType,
     lexeme: []u8,
-    //literal: []u8, // TODO: not the right type for now, possibly can omit
+    literal: ?Literal,
     line: usize,
 
-    pub fn init(token_type: TokenType, lexeme: []u8, line: usize) @This() {
-        return .{ .token_type = token_type, .lexeme = lexeme, .line = line };
-    }
-
     pub fn toString(self: *Token) void {
-        printerr("{s} {s} line: {d}", .{ @tagName(self.token_type), self.lexeme, self.line });
+        printerr("{s} {s} {anytype} line: {d}", .{ @tagName(self.token_type), self.lexeme, self.literal, self.line });
     }
+};
+
+pub const Literal = union(enum) {
+    number: f64,
+    string: []const u8,
+    boolean: bool,
 };
