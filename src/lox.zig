@@ -37,6 +37,7 @@ pub fn runPrompt(allocator: std.mem.Allocator) !void {
         try stdout.flush();
         //const result = try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) orelse break;
         const result = try stdin.takeDelimiterExclusive('\n');
+
         printerr("got: {s}, which is {d} chars.\n", .{ result, result.len });
         run(allocator, result) catch {}; // don't want to kill REPL
     }

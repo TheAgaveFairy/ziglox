@@ -30,7 +30,12 @@ pub fn main() !void {
     lox.runFile(allocator, filename) catch |err| {
         return err;
     };
-    try lox.runPrompt(allocator);
+    lox.runPrompt(allocator) catch |err| switch (err) {
+        error.EndOfStream => {
+            printerr("Thanks for using this!\n", .{});
+        },
+        else => return err,
+    };
 }
 
 fn testRun(allocator: std.mem.Allocator, source: []const u8, expected: []const TokenType) !void {
