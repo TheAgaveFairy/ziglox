@@ -22,7 +22,8 @@ const ParseError = error {
 pub const Parser = struct {
     const Self = @This();
 
-    allocator: std.mem.Allocator, // ArenaAllocator would be good here
+    //allocator: std.mem.Allocator, // ArenaAllocator would be good here
+    allocator: std.heap.ArenaAllocator.init(std.heap.page_allocator),
     //to_free: std.ArrayList(*Token);
     tokens: std.ArrayList(Token),
     current: usize = 0,
