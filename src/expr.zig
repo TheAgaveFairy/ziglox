@@ -34,15 +34,15 @@ pub const LiteralExpr = struct {
 };
 
 pub const LogicalExpr = struct {
-    left: *Expr,
+    left: *const Expr,
     op: Token,
-    right: *Expr,
+    right: *const Expr,
 };
 
 pub const SetExpr = struct {
-    object: *Expr,
+    object: *const Expr,
     name: Token,
-    value: *Expr,
+    value: *const Expr,
 };
 
 pub const SuperExpr = struct {
@@ -56,7 +56,7 @@ pub const ThisExpr = struct {
 
 pub const UnaryExpr = struct {
     op: Token,
-    right: *Expr,
+    right: *const Expr,
 };
 
 pub const VariableExpr = struct {
@@ -78,20 +78,19 @@ pub const Expr = union(enum) {
     variable: VariableExpr,
 };
 
-
 pub const Printer = struct { // tusharhero/zlox/blob/master/src/ast.zig more or less
     const Self = @This();
 
-    arena: std.mem.Allocator,
-    notation: Notation, // TODO: // reverse_polish or parenthesized_prefix union/union(enum)
-    
+    arena: std.heap.ArenaAllocator,
+    notation: Notation,
+
     pub const Notation = union(enum) {
         reverse_polish,
         parenthesized_prefix,
-    }
+    };
 
     pub fn init(notation: Notation) Self {
-        return Self {
+        return Self{
             .arena = std.heap.ArenaAllocator.init(std.heap.page_allocator),
             .notation = notation,
         };
@@ -120,14 +119,15 @@ pub const Printer = struct { // tusharhero/zlox/blob/master/src/ast.zig more or 
         const literal = expr.value;
         if (literal == null) return "nil"; // TODO: check this
 
-        return switch(literal.?) {
+        return switch (literal.?) {
             .number => |float| try std.fmt.allocPrint(self.arena, "{d}", .{float}),
             .string => |str| str,
             .boolean => |b| if (b) "true" else "false",
         };
     }
+
     fn printUnary(self: *Self, expr: UnaryExpr) ![]const u8 {
-        return try self.foramt(.{
+        return try self.format(.{
             expr.op.lexeme,
             expr.right,
         });
@@ -141,7 +141,7 @@ pub const Printer = struct { // tusharhero/zlox/blob/master/src/ast.zig more or 
     }
 
     fn formatParenthesizedPrefix(self: *Self, args: anytype) ![]const u8 {
-        var alloc_writer = std.Io.Writer.Allocating.init(self.arena);
+        const alloc_writer = std.Io.Writer.Allocating.init(self.arena);
         var writer = alloc_writer.writer;
 
         inline for (args, 0..) |arg, idx| {
@@ -153,11 +153,10 @@ pub const Printer = struct { // tusharhero/zlox/blob/master/src/ast.zig more or 
         }
         try writer.print(")", .{});
         return writer.toArrayList().items;
-        
     }
 
     fn formatReversePolish(self: *Self, args: anytype) ![]const u8 {
-        var alloc_writer = std.Io.Writer.Allocating.init(self.arena);
+        const alloc_writer = std.Io.Writer.Allocating.init(self.arena);
         var writer = alloc_writer.writer;
 
         inline for (args, 0..) |arg, idx| {
@@ -168,12 +167,71 @@ pub const Printer = struct { // tusharhero/zlox/blob/master/src/ast.zig more or 
     }
 
     pub fn printExpr(self: *Self, expr: *const Expr) ![]const u8 {
-        return switch(expr) {
+        return switch (expr) {
             .binary => |b| self.printBinary(b),
             .grouping => |g| self.printGrouping(g),
             .literal => |l| self.printLiteral(l),
             .unary => |u| self.printUnary(u),
+            else => unreachable,
         };
     }
-
 };
+
+test "ast printing" {
+    const testing_allocator = std.testing.allocator;
+    var slice: []u8 = try testing_allocator.alloc(u8, 3);
+    defer testing_allocator.free(slice);
+    slice[0] = 42; // *
+    slice[1] = 45; // -
+    slice[2] = 0; // no reason i did this
+
+    const left_subnode = Expr{
+        .literal = LiteralExpr{
+            .value = Literal{
+                .number = 123,
+            },
+        },
+    };
+
+    const left_node = Expr{
+        .unary = UnaryExpr{
+            .op = Token{
+                .token_type = .MINUS,
+                .literal = null,
+                .line = 1,
+                .lexeme = slice[1..],
+            },
+            .right = &left_subnode,
+        },
+    };
+
+    _ =
+        \\
+        \\const right_node: Expr = {
+        \\    .grouping = GroupingExpr {
+        \\        .expr = Expr {
+        \\            .literal = Literal {.number = 45.67},
+        \\        }
+        \\    };
+        \\};
+        \\
+        \\const root_node: Expr = {
+        \\    .binary = BinaryExpr {
+        \\        .op = Token{
+        \\            .token_type = .STAR,
+        \\            .line = 1,
+        \\            .lexeme = slice[0..1],
+        \\            .literal = null, // test an actual value below
+        \\        },
+        \\        .left = &left_node,
+        \\        .right = &right_node,
+        \\};
+    ;
+
+    var printer = Printer.init(.reverse_polish);
+    defer printer.deinit();
+
+    const result = try printer.printExpr(&left_node);
+    std.debug.print("{s}", .{result});
+    try std.testing.expect(true);
+}
