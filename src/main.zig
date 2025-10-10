@@ -7,6 +7,9 @@ const lox = @import("lox.zig");
 const Scanner = scanner.Scanner;
 const TokenType = scanner.TokenType;
 
+// just for testing support
+const expr = @import("expr.zig");
+
 pub fn main() !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
@@ -58,5 +61,6 @@ test "some tokens" {
 }
 
 test "others" {
+    _ = expr;
     std.testing.refAllDecls(@This());
 }
