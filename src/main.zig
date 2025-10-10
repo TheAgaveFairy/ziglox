@@ -56,3 +56,7 @@ test "some tokens" {
     const expected = [_]TokenType{ .LEFT_PAREN, .RIGHT_PAREN, .LEFT_BRACE, .RIGHT_BRACE, .SEMICOLON, .EOF };
     try testRun(std.testing.allocator, source, &expected);
 }
+
+test "others" {
+    std.testing.refAllDecls(@This());
+}
