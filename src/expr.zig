@@ -295,10 +295,15 @@ test "ast printing" {
     defer rpn_printer.deinit();
 
     const pp_result = try pp_printer.printExpr(&root_node);
-    std.debug.print("ParenthesizedPrefix\n\t>>>{s}\n", .{pp_result});
+    //_ = pp_result;
+    //std.debug.print("ParenthesizedPrefix\n\t>>>{s}\n", .{pp_result});
+    
     const rpn_result = try rpn_printer.printExpr(&root_node);
-    std.debug.print("ReversePolishNotation\n\t>>>{s}\n", .{rpn_result});
+    //_ = rpn_result;
+    //std.debug.print("ReversePolishNotation\n\t>>>{s}\n", .{rpn_result});
+    
     try std.testing.expectEqualStrings("(* (- 123) (group 45.67))", pp_result);
+    try std.testing.expectEqualStrings("123 - 45.67 group *", rpn_result);
 }
 
 test "print literal (simple)" { // TODO: call printExpr instead of printLiteral

@@ -247,7 +247,7 @@ pub const Token = struct {
     line: usize,
 
     pub fn toString(self: *Token) void {
-        printerr("{s} {s} {anytype} line: {d}", .{ @tagName(self.token_type), self.lexeme, self.literal, self.line });
+        printerr("{s} {s} {any} line: {d}\n", .{ @tagName(self.token_type), self.lexeme, self.literal, self.line });
     }
 };
 

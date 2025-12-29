@@ -32,12 +32,15 @@ pub const Parser = struct {
     //to_free: std.ArrayList(*Token);
     tokens: std.ArrayList(Token),
     current: usize = 0,
+    had_error: bool = false, // might deprecate 
 
     pub fn init(tokens: std.ArrayList(Token)) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(std.heap.page_allocator),
             .tokens = tokens,
+            // be explicit
             .current = 0,
+            .had_error = false,
         };
     }
 
@@ -150,7 +153,13 @@ pub const Parser = struct {
             return ue;
         } else if (self.match(&.{ .STAR, .SLASH, .PLUS, .GREATER, .LESS, .GREATER_EQUAL, .LESS_EQUAL, .BANG_EQUAL, .EQUAL_EQUAL })) {
             printerr("1) Expected expression after unary token.\n", .{}); // TODO: handle errors better
-            try self.handleParseError(self.peek(), "1-2) Expected expression after unary token.");
+            self.handleParseError(self.peek(), "1-2) Expected expression after unary token.") catch |err| { // TODO: check error handling
+                //lox.report(token.line, temp, message); // line, where, msg
+                // we could have an allocator / write error. doubtful, but...
+                printerr("some kind of memory error in Parser error handling! {t}", .{err});
+                // PANIC??
+                self.had_error = true;
+            };
             return ParseError.ExpectedExpression;
         }
 
@@ -194,7 +203,11 @@ pub const Parser = struct {
             } };
             return group;
         }
-        try self.handleParseError(self.peek(), "Expected expression.");
+        self.had_error = true;
+        self.handleParseError(self.peek(), "Expected expression, in primary().") catch |err| {
+            printerr("error handling error in Parser, write / alloc. {t}\n", .{err}); // should basically ne'er happen
+            // PANIC?
+        };
         return ParseError.ExpectedExpression;
     }
 
@@ -228,8 +241,8 @@ pub const Parser = struct {
             var writer = &alloc_writer.writer;
             try writer.print(" at '", .{});
             try writer.print("{s}'", .{token.lexeme});
-            const temp = alloc_writer.toOwnedSlice();
-            lox.report(token.line, temp, message);
+            const temp = try alloc_writer.toOwnedSlice();
+            lox.report(token.line, temp, msg_buf);
         }
     }
 

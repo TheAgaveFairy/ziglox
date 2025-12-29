@@ -64,11 +64,17 @@ test "some tokens" {
 
 test "test parser" {
     var allocator = std.testing.allocator;
-    const source =
-        \\var min = 2;
-        \\var max = 3;
-        \\var average = (min + max) / 2;
-        \\print "thing here";
+    // WE DONT HAVE STATEMENTS YET, etc
+    //const source =
+    //    \\var min = 2;
+    //    \\var max = 3;
+    //    \\var average = (min + max) / 2;
+    //    \\print "thing here";
+    //;
+    const source = 
+        //\\2 + 3;
+        //\\!true;
+        \\(3 + 2) / 5 + 7;
     ;
     const buffer = try allocator.dupe(u8, source);
     defer allocator.free(buffer);
@@ -78,13 +84,24 @@ test "test parser" {
 
     try scan.scanTokens();
 
-    var p = parser.Parser.init(scan.tokens);
-    const root_expr = try p.parse(); // returns optional result
+    //printerr("\n\n\n", .{});
+    //for (scan.tokens.items) |*token| {
+    //    token.toString();
+    //}
 
+    var p = parser.Parser.init(scan.tokens);
+    const root_expr = p.parse() catch |err| {
+        printerr("Error parsing test source. Failing. {t}.\n", .{err});
+        try std.testing.expect(false);
+    }; // returns optional result
+
+    var printer = expr.Printer.init(.parenthesized_prefix);
     if (root_expr) |root| {
-        var printer = expr.Printer.init(.parenthesized_prefix);
         const ast_string = try printer.printExpr(root);
         printerr("{s}\n", .{ast_string});
+    } else {
+        printerr("Error parsing test source. Failing.\n", .{});
+        try std.testing.expect(false);
     }
 
     try std.testing.expect(true);
